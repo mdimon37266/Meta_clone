@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ওয়াকি-টকি · গ্রুপ কল</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f0f1a">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        :root {
+            --bg: #0a0a14;
+            --card: rgba(20,20,40,0.7);
+            --accent: #7c3aed;
+            --danger: #ef4444;
+            --success: #10b981;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --radius: 28px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        html, body {
+            height: 100dvh; overflow: hidden;
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg); color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-font-smoothing: antialiased;
+        }
+        body::before {
+            content:''; position:fixed; inset:0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(124,58,237,0.15) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.1) 0%, transparent 60%),
+                        radial-gradient(ellipse at 50% 80%, rgba(16,185,129,0.08) 0%, transparent 60%);
+            z-index:0; animation: bgShift 12s ease-in-out infinite alternate;
+        }
+        @keyframes bgShift { 0%{opacity:0.8; transform:scale(1)} 100%{opacity:1; transform:scale(1.05)} }
+        .app {
+            position:relative; z-index:1; width:100%; height:100dvh;
+            display:flex; flex-direction:column;
+            padding: var(--safe-top) 16px var(--safe-bottom);
+            max-width:520px; margin:0 auto;
+        }
+        .glass-panel {
+            background: var(--card);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border:1px solid rgba(255,255,255,0.1);
+            border-radius:var(--radius); padding:24px 20px;
+            box-shadow:0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            flex:1; display:flex; flex-direction:column; gap:18px;
+            overflow-y:auto; -webkit-overflow-scrolling:touch;
+        }
+        .header { display:flex; align-items:center; justify-content:space-between; }
+        .logo {
+            font-size:1.8rem; font-weight:800;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            background-clip:text;
+        }
+        .fullscreen-btn {
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15);
+            color:#fff; width:40px; height:40px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            font-size:1.2rem; cursor:pointer; transition:0.2s; backdrop-filter:blur(10px);
+        }
+        .fullscreen-btn:active { background:rgba(255,255,255,0.2); transform:scale(0.9); }
+
+        .id-section {
+            background:rgba(0,0,0,0.3); border-radius:18px; padding:12px;
+            display:flex; align-items:center; gap:8px;
+            border:1px solid rgba(255,255,255,0.08); flex-wrap:wrap;
+        }
+        .id-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+        .id-input {
+            flex:1; min-width:120px; background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.1); border-radius:12px;
+            padding:10px 12px; color:#fff; font-weight:600; font-size:0.95rem;
+            text-align:center; outline:none; font-family:inherit;
+        }
+        .id-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,58,237,0.2); }
+        .btn {
+            border:none; font-weight:600; font-size:0.85rem; padding:10px 16px;
+            border-radius:14px; cursor:pointer; transition:all 0.2s;
+            display:inline-flex; align-items:center; justify-content:center;
+            gap:6px; letter-spacing:0.3px; background:rgba(255,255,255,0.08);
+            color:#fff; border:1px solid rgba(255,255,255,0.1);
+            backdrop-filter:blur(10px); white-space:nowrap;
+        }
+        .btn:active { transform:scale(0.95); background:rgba(255,255,255,0.15); }
+        .btn-accent { background:var(--accent); border:none; box-shadow:0 10px 20px -5px rgba(124,58,237,0.4); }
+        .btn-danger { background:var(--danger); box-shadow:0 10px 20px -5px rgba(239,68,68,0.5); }
+        .btn-sm { padding:8px 12px; font-size:0.8rem; border-radius:10px; }
+
+        .status-badge {
+            display:flex; align-items:center; justify-content:center; gap:10px;
+            padding:10px; border-radius:16px; background:rgba(255,255,255,0.03);
+            font-size:0.9rem; font-weight:500; transition:0.3s;
+        }
+        .status-dot { width:12px; height:12px; border-radius:50%; background:#64748b; transition:0.3s; }
+        .status-connecting .status-dot { background:#f59e0b; animation:pulse 0.8s infinite; }
+        .status-connected .status-dot { background:#10b981; box-shadow:0 0 12px #10b981; }
+        .status-idle { color:#94a3b8; }
+        .status-connected { color:#6ee7b7; }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.6); opacity:0.7} }
+
+        .group-input-area { display:flex; gap:8px; }
+        .group-input-area input {
+            flex:1; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1);
+            border-radius:18px; padding:14px 18px; color:#fff; font-size:1rem;
+            outline:none; text-align:center; transition:0.2s;
+        }
+        .group-input-area input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,58,237,0.3); }
+
+        .group-list {
+            display:flex; flex-direction:column; gap:8px;
+            max-height: 150px; overflow-y:auto; margin-top:4px;
+        }
+        .peer-card {
+            background:rgba(255,255,255,0.05); border-radius:12px;
+            padding:10px 14px; display:flex; align-items:center;
+            justify-content:space-between; border:1px solid rgba(255,255,255,0.08);
+        }
+        .peer-id { font-weight:600; font-size:0.9rem; word-break:break-all; flex:1; }
+        .peer-status { font-size:0.7rem; color:var(--muted); margin-left:8px; }
+        .remove-btn {
+            background:transparent; border:1px solid var(--danger); color:var(--danger);
+            border-radius:8px; padding:4px 12px; font-weight:600; cursor:pointer; transition:0.2s;
+            margin-left:8px;
+        }
+        .remove-btn:active { background:var(--danger); color:#fff; }
+
+        .talk-btn-container {
+            flex:1; display:flex; flex-direction:column; align-items:center;
+            justify-content:center; gap:12px;
+        }
+        .talk-btn {
+            width:140px; height:140px; border-radius:50%;
+            background:var(--danger); border:none; font-size:1.2rem; font-weight:700;
+            color:#fff; position:relative; cursor:pointer; transition:0.2s;
+            box-shadow:0 20px 40px rgba(239,68,68,0.5), inset 0 -4px 0 rgba(0,0,0,0.2);
+            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+        }
+        .talk-btn.unmuted {
+            background:var(--success);
+            box-shadow:0 0 50px rgba(16,185,129,0.7), 0 20px 40px rgba(16,185,129,0.4);
+            animation:none;
+        }
+        .talk-btn.unmuted::after {
+            content:''; position:absolute; inset:-8px; border-radius:50%;
+            border:2px solid rgba(16,185,129,0.6); animation:ripple 1.2s ease-out infinite;
+        }
+        @keyframes ripple { 0%{transform:scale(1); opacity:0.8} 100%{transform:scale(1.4); opacity:0} }
+        .sound-wave { display:flex; align-items:flex-end; gap:3px; height:24px; }
+        .sound-wave span { width:4px; background:currentColor; border-radius:2px; animation:wave 0.8s ease-in-out infinite; }
+        .sound-wave span:nth-child(1){height:12px; animation-delay:0s}
+        .sound-wave span:nth-child(2){height:20px; animation-delay:0.1s}
+        .sound-wave span:nth-child(3){height:16px; animation-delay:0.2s}
+        .sound-wave span:nth-child(4){height:24px; animation-delay:0.3s}
+        .sound-wave span:nth-child(5){height:14px; animation-delay:0.4s}
+        @keyframes wave { 0%,100%{transform:scaleY(0.6)} 50%{transform:scaleY(1.2)} }
+
+        .hidden { display:none !important; }
+        .text-muted { color:var(--muted); font-size:0.8rem; }
+        .audio-container { display:none; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="glass-panel">
+        <div class="header">
+            <span class="logo">📡 গ্রুপ টকি</span>
+            <button class="fullscreen-btn" id="fs-btn" title="ফুলস্ক্রিন">⛶</button>
+        </div>
+
+        <!-- ID Section -->
+        <div class="id-section">
+            <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+                <span class="id-label">আপনার পিয়ার আইডি</span>
+                <input type="text" class="id-input" id="my-id-input" placeholder="wt-username" autocomplete="off">
+            </div>
+            <button class="btn btn-sm" id="set-id-btn">✅ সেট</button>
+            <button class="btn btn-sm" id="regen-btn">🔄</button>
+            <button class="btn btn-sm" id="copy-btn">📋</button>
+        </div>
+
+        <!-- Status -->
+        <div class="status-badge status-idle" id="status-badge">
+            <span class="status-dot"></span>
+            <span id="status-text">সংযোগ বিচ্ছিন্ন</span>
+        </div>
+
+        <!-- Group Add Area -->
+        <div id="connect-area">
+            <div class="group-input-area">
+                <input type="text" id="remote-id-input" placeholder="সদস্যের আইডি লিখুন" autocomplete="off">
+                <button class="btn btn-accent" id="add-btn">➕ যোগ করুন</button>
+            </div>
+            <div class="group-list" id="group-list"></div>
+        </div>
+
+        <!-- Talk Area -->
+        <div id="talk-area" class="talk-btn-container hidden">
+            <button class="talk-btn" id="talk-btn">
+                <span class="sound-wave">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </span>
+                <span id="talk-label">মাইক বন্ধ</span>
+            </button>
+            <span class="text-muted">মাইক টগল করতে ট্যাপ</span>
+            <button class="btn btn-danger" id="hangup-btn">❌ সব সংযোগ কাটুন</button>
+        </div>
+    </div>
+    <!-- Hidden container for dynamic audio elements -->
+    <div class="audio-container" id="audio-container"></div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+    (() => {
+        // DOM
+        const myIdInput = document.getElementById('my-id-input');
+        const setBtn = document.getElementById('set-id-btn');
+        const regenBtn = document.getElementById('regen-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const statusBadge = document.getElementById('status-badge');
+        const statusText = document.getElementById('status-text');
+        const remoteInput = document.getElementById('remote-id-input');
+        const addBtn = document.getElementById('add-btn');
+        const groupListDiv = document.getElementById('group-list');
+        const talkArea = document.getElementById('talk-area');
+        const talkBtn = document.getElementById('talk-btn');
+        const talkLabel = document.getElementById('talk-label');
+        const hangupBtn = document.getElementById('hangup-btn');
+        const fsBtn = document.getElementById('fs-btn');
+        const audioContainer = document.getElementById('audio-container');
+
+        let localStream = null;
+        let peer = null;
+        let isMuted = true;
+        const activeCalls = new Map(); // remoteId -> { call, audioEl }
+
+        const ID_KEY = 'wt_peer_id';
+
+        // ID Management
+        function getStoredId() { return localStorage.getItem(ID_KEY) || ''; }
+        function randomId() { return 'wt-' + Math.random().toString(36).substring(2, 10); }
+        function setAndSaveId(id) { localStorage.setItem(ID_KEY, id); myIdInput.value = id; }
+        function loadIdToInput() {
+            let stored = getStoredId();
+            if (!stored) { stored = randomId(); setAndSaveId(stored); }
+            else myIdInput.value = stored;
+        }
+
+        // Status
+        function setStatus(status, msg) {
+            statusBadge.className = 'status-badge status-' + status;
+            statusText.textContent = msg;
+        }
+
+        // Create audio element for a remote peer
+        function createAudioElement(peerId, stream) {
+            removeAudioElement(peerId); // just in case
+            const audio = document.createElement('audio');
+            audio.id = 'audio-' + peerId;
+            audio.autoplay = true;
+            audio.playsinline = true;
+            audio.srcObject = stream;
+            audio.play().catch(e => {
+                console.warn('Autoplay blocked for', peerId, e.message);
+            });
+            audioContainer.appendChild(audio);
+            return audio;
+        }
+
+        function removeAudioElement(peerId) {
+            const existing = document.getElementById('audio-' + peerId);
+            if (existing) {
+                existing.srcObject = null;
+                existing.remove();
+            }
+        }
+
+        // Resume all audio (on user interaction)
+        function resumeAllAudio() {
+            document.querySelectorAll('#audio-container audio').forEach(audio => {
+                if (audio.paused) audio.play().catch(() => {});
+            });
+        }
+
+        // UI: Group list
+        function updateGroupUI() {
+            groupListDiv.innerHTML = '';
+            if (activeCalls.size === 0) {
+                groupListDiv.innerHTML = '<div class="text-muted" style="padding:8px;">এখনো কেউ যুক্ত হয়নি</div>';
+                talkArea.classList.add('hidden');
+                setStatus('idle', 'সংযোগ বিচ্ছিন্ন');
+            } else {
+                talkArea.classList.remove('hidden');
+                setStatus('connected', `গ্রুপে ${activeCalls.size} জন`);
+            }
+            for (let [remoteId, data] of activeCalls) {
+                const card = document.createElement('div');
+                card.className = 'peer-card';
+                card.innerHTML = `
+                    <span class="peer-id">${remoteId}</span>
+                    <span class="peer-status">🔊</span>
+                    <button class="remove-btn" data-remote="${remoteId}">✕</button>
+                `;
+                groupListDiv.appendChild(card);
+            }
+        }
+
+        // Disconnect one peer
+        function disconnectPeer(remoteId) {
+            const data = activeCalls.get(remoteId);
+            if (data) {
+                if (data.call) data.call.close();
+                removeAudioElement(remoteId);
+                activeCalls.delete(remoteId);
+            }
+            updateGroupUI();
+        }
+
+        function disconnectAll() {
+            for (let remoteId of activeCalls.keys()) {
+                disconnectPeer(remoteId);
+            }
+            // Clear all remaining audio
+            audioContainer.innerHTML = '';
+            activeCalls.clear();
+            updateGroupUI();
+        }
+
+        hangupBtn.addEventListener('click', disconnectAll);
+
+        // Call event setup
+        function setupCallEvents(call, remoteId) {
+            call.on('stream', (remoteStream) => {
+                console.log('Audio stream received from', remoteId);
+                const data = activeCalls.get(remoteId);
+                if (data) {
+                    data.audioEl = createAudioElement(remoteId, remoteStream);
+                }
+                updateGroupUI();
+            });
+            call.on('close', () => {
+                console.log('Call closed:', remoteId);
+                if (activeCalls.has(remoteId)) {
+                    removeAudioElement(remoteId);
+                    activeCalls.delete(remoteId);
+                }
+                updateGroupUI();
+            });
+            call.on('error', (err) => {
+                console.error('Call error:', remoteId, err);
+                disconnectPeer(remoteId);
+            });
+        }
+
+        // Incoming call handler
+        function handleIncomingCall(call) {
+            if (!localStream) {
+                alert('মাইক্রোফোন প্রস্তুত নয়');
+                return;
+            }
+            const remoteId = call.peer;
+            if (activeCalls.has(remoteId)) {
+                call.close();
+                return;
+            }
+            call.answer(localStream);
+            activeCalls.set(remoteId, { call, audioEl: null });
+            setupCallEvents(call, remoteId);
+            updateGroupUI();
+        }
+
+        // Outgoing call
+        function createOutgoingCall(remoteId) {
+            if (!localStream) {
+                alert('মাইক্রোফোন প্রস্তুত নয়');
+                return;
+            }
+            if (remoteId === myIdInput.value) {
+                alert('নিজের আইডি দেওয়া যাবে না');
+                return;
+            }
+            if (activeCalls.has(remoteId)) {
+                alert('ইতিমধ্যে এই সদস্য সংযুক্ত আছে');
+                return;
+            }
+            const call = peer.call(remoteId, localStream);
+            if (call) {
+                activeCalls.set(remoteId, { call, audioEl: null });
+                setupCallEvents(call, remoteId);
+                updateGroupUI();
+            } else {
+                alert('কল ব্যর্থ');
+            }
+        }
+
+        // Mic control
+        function setMicMute(mute) {
+            if (!localStream) return;
+            const track = localStream.getAudioTracks()[0];
+            if (track) {
+                track.enabled = !mute;
+                isMuted = mute;
+                updateTalkButton();
+            }
+        }
+        function toggleMic() {
+            setMicMute(!isMuted);
+            // Unblock autoplay on user interaction (resume all audio)
+            resumeAllAudio();
+        }
+        function updateTalkButton() {
+            if (isMuted) {
+                talkBtn.classList.remove('unmuted');
+                talkLabel.textContent = 'মাইক বন্ধ';
+            } else {
+                talkBtn.classList.add('unmuted');
+                talkLabel.textContent = 'কথা বলছেন...';
+            }
+        }
+        talkBtn.addEventListener('click', toggleMic);
+
+        // Add peer button
+        addBtn.addEventListener('click', () => {
+            const remoteId = remoteInput.value.trim();
+            if (!remoteId) return;
+            createOutgoingCall(remoteId);
+            remoteInput.value = '';
+        });
+        remoteInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addBtn.click();
+        });
+
+        // Remove peer from list
+        groupListDiv.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-btn')) {
+                const remoteId = e.target.dataset.remote;
+                disconnectPeer(remoteId);
+            }
+        });
+
+        // Peer Init
+        async function initPeer(customId) {
+            const id = customId || getStoredId();
+            if (peer) peer.destroy();
+            disconnectAll();
+            peer = new Peer(id, {
+                host: '0.peerjs.com',
+                port: 443,
+                secure: true,
+                debug: 0
+            });
+            peer.on('open', () => {
+                setAndSaveId(id);
+                myIdInput.value = id;
+                setStatus('idle', 'প্রস্তুত');
+            });
+            peer.on('error', err => {
+                console.error(err);
+                if (err.type === 'unavailable-id') {
+                    alert('এই আইডি আগেই নেওয়া, ভিন্ন আইডি দিন');
+                }
+                setStatus('idle', 'আইডি ত্রুটি');
+            });
+            peer.on('call', handleIncomingCall);
+        }
+
+        // Media
+        async function getMedia() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                setMicMute(true);
+            } catch (e) {
+                alert('মাইক্রোফোন অনুমতি ব্যর্থ: ' + e.message);
+            }
+        }
+
+        // ID buttons
+        setBtn.addEventListener('click', () => {
+            const newId = myIdInput.value.trim();
+            if (!newId) { alert('আইডি খালি রাখা যাবে না'); return; }
+            if (!/^[a-zA-Z0-9_-]{3,30}$/.test(newId)) {
+                alert('ইংরেজি অক্ষর, সংখ্যা, হাইফেন বা আন্ডারস্কোর (৩-৩০)');
+                return;
+            }
+            setAndSaveId(newId);
+            initPeer(newId);
+        });
+        regenBtn.addEventListener('click', () => {
+            const newId = randomId();
+            setAndSaveId(newId);
+            initPeer(newId);
+        });
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(myIdInput.value);
+                copyBtn.textContent = '✅';
+                setTimeout(() => copyBtn.textContent = '📋', 1500);
+            } catch { prompt('কপি করুন:', myIdInput.value); }
+        });
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        // Add global click listener to resume all audio (solves autoplay)
+        document.addEventListener('click', resumeAllAudio, { once: false });
+
+        window.addEventListener('beforeunload', () => {
+            disconnectAll();
+            if (peer) peer.destroy();
+        });
+
+        // Start
+        window.addEventListener('load', async () => {
+            await getMedia();
+            loadIdToInput();
+            initPeer(getStoredId());
+        });
+    })();
+</script>
+</body>
+</html>
