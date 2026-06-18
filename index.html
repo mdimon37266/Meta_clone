@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ওয়াকি-টকি · গ্রুপ কল</title>
+    <title>ওয়াকি-টকি · গ্রুপ কল (দূরত্ব ঠিক)</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f0f1a">
@@ -173,11 +173,10 @@
 <div class="app">
     <div class="glass-panel">
         <div class="header">
-            <span class="logo">📡 গ্রুপ টকি</span>
+            <span class="logo">📡 গ্রুপ টকি (দূরত্ব)</span>
             <button class="fullscreen-btn" id="fs-btn" title="ফুলস্ক্রিন">⛶</button>
         </div>
 
-        <!-- ID Section -->
         <div class="id-section">
             <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
                 <span class="id-label">আপনার পিয়ার আইডি</span>
@@ -188,13 +187,11 @@
             <button class="btn btn-sm" id="copy-btn">📋</button>
         </div>
 
-        <!-- Status -->
         <div class="status-badge status-idle" id="status-badge">
             <span class="status-dot"></span>
             <span id="status-text">সংযোগ বিচ্ছিন্ন</span>
         </div>
 
-        <!-- Group Add Area -->
         <div id="connect-area">
             <div class="group-input-area">
                 <input type="text" id="remote-id-input" placeholder="সদস্যের আইডি লিখুন" autocomplete="off">
@@ -203,7 +200,6 @@
             <div class="group-list" id="group-list"></div>
         </div>
 
-        <!-- Talk Area -->
         <div id="talk-area" class="talk-btn-container hidden">
             <button class="talk-btn" id="talk-btn">
                 <span class="sound-wave">
@@ -215,7 +211,6 @@
             <button class="btn btn-danger" id="hangup-btn">❌ সব সংযোগ কাটুন</button>
         </div>
     </div>
-    <!-- Hidden container for dynamic audio elements -->
     <div class="audio-container" id="audio-container"></div>
 </div>
 
@@ -242,9 +237,32 @@
         let localStream = null;
         let peer = null;
         let isMuted = true;
-        const activeCalls = new Map(); // remoteId -> { call, audioEl }
+        const activeCalls = new Map();
 
         const ID_KEY = 'wt_peer_id';
+
+        // ---- CUSTOM STUN/TURN (দূরবর্তী সংযোগের জন্য) ----
+        const PEER_CONFIG = {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    {
+                        urls: 'turn:openrelay.metered.ca:80',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ],
+                iceTransportPolicy: 'all',
+                iceCandidatePoolSize: 10
+            }
+        };
 
         // ID Management
         function getStoredId() { return localStorage.getItem(ID_KEY) || ''; }
@@ -256,22 +274,27 @@
             else myIdInput.value = stored;
         }
 
-        // Status
         function setStatus(status, msg) {
             statusBadge.className = 'status-badge status-' + status;
             statusText.textContent = msg;
         }
 
-        // Create audio element for a remote peer
         function createAudioElement(peerId, stream) {
-            removeAudioElement(peerId); // just in case
+            removeAudioElement(peerId);
             const audio = document.createElement('audio');
             audio.id = 'audio-' + peerId;
             audio.autoplay = true;
             audio.playsinline = true;
             audio.srcObject = stream;
+            // ভলিউম সর্বোচ্চ
+            audio.volume = 1.0;
             audio.play().catch(e => {
                 console.warn('Autoplay blocked for', peerId, e.message);
+                // ইউজার ইন্টারঅ্যাকশনে আবার চেষ্টা
+                document.addEventListener('click', function resume() {
+                    audio.play().catch(()=>{});
+                    document.removeEventListener('click', resume);
+                }, { once: true });
             });
             audioContainer.appendChild(audio);
             return audio;
@@ -285,14 +308,12 @@
             }
         }
 
-        // Resume all audio (on user interaction)
         function resumeAllAudio() {
             document.querySelectorAll('#audio-container audio').forEach(audio => {
                 if (audio.paused) audio.play().catch(() => {});
             });
         }
 
-        // UI: Group list
         function updateGroupUI() {
             groupListDiv.innerHTML = '';
             if (activeCalls.size === 0) {
@@ -308,14 +329,13 @@
                 card.className = 'peer-card';
                 card.innerHTML = `
                     <span class="peer-id">${remoteId}</span>
-                    <span class="peer-status">🔊</span>
+                    <span class="peer-status">${data.audioEl ? '🔊' : '⏳'}</span>
                     <button class="remove-btn" data-remote="${remoteId}">✕</button>
                 `;
                 groupListDiv.appendChild(card);
             }
         }
 
-        // Disconnect one peer
         function disconnectPeer(remoteId) {
             const data = activeCalls.get(remoteId);
             if (data) {
@@ -328,25 +348,24 @@
 
         function disconnectAll() {
             for (let remoteId of activeCalls.keys()) {
-                disconnectPeer(remoteId);
+                const data = activeCalls.get(remoteId);
+                if (data?.call) data.call.close();
+                removeAudioElement(remoteId);
             }
-            // Clear all remaining audio
-            audioContainer.innerHTML = '';
             activeCalls.clear();
             updateGroupUI();
         }
 
         hangupBtn.addEventListener('click', disconnectAll);
 
-        // Call event setup
         function setupCallEvents(call, remoteId) {
             call.on('stream', (remoteStream) => {
-                console.log('Audio stream received from', remoteId);
+                console.log('✅ Audio stream received from', remoteId);
                 const data = activeCalls.get(remoteId);
                 if (data) {
                     data.audioEl = createAudioElement(remoteId, remoteStream);
+                    updateGroupUI();
                 }
-                updateGroupUI();
             });
             call.on('close', () => {
                 console.log('Call closed:', remoteId);
@@ -362,7 +381,6 @@
             });
         }
 
-        // Incoming call handler
         function handleIncomingCall(call) {
             if (!localStream) {
                 alert('মাইক্রোফোন প্রস্তুত নয়');
@@ -379,7 +397,6 @@
             updateGroupUI();
         }
 
-        // Outgoing call
         function createOutgoingCall(remoteId) {
             if (!localStream) {
                 alert('মাইক্রোফোন প্রস্তুত নয়');
@@ -393,17 +410,22 @@
                 alert('ইতিমধ্যে এই সদস্য সংযুক্ত আছে');
                 return;
             }
-            const call = peer.call(remoteId, localStream);
+            
+            // কাস্টম কনফিগ সহ কল করুন
+            const call = peer.call(remoteId, localStream, {
+                metadata: { type: 'audio' }
+            });
+            
             if (call) {
                 activeCalls.set(remoteId, { call, audioEl: null });
                 setupCallEvents(call, remoteId);
                 updateGroupUI();
+                setStatus('connecting', `${remoteId} এর সাথে সংযোগ হচ্ছে...`);
             } else {
                 alert('কল ব্যর্থ');
             }
         }
 
-        // Mic control
         function setMicMute(mute) {
             if (!localStream) return;
             const track = localStream.getAudioTracks()[0];
@@ -415,7 +437,6 @@
         }
         function toggleMic() {
             setMicMute(!isMuted);
-            // Unblock autoplay on user interaction (resume all audio)
             resumeAllAudio();
         }
         function updateTalkButton() {
@@ -429,7 +450,6 @@
         }
         talkBtn.addEventListener('click', toggleMic);
 
-        // Add peer button
         addBtn.addEventListener('click', () => {
             const remoteId = remoteInput.value.trim();
             if (!remoteId) return;
@@ -440,7 +460,6 @@
             if (e.key === 'Enter') addBtn.click();
         });
 
-        // Remove peer from list
         groupListDiv.addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-btn')) {
                 const remoteId = e.target.dataset.remote;
@@ -448,37 +467,58 @@
             }
         });
 
-        // Peer Init
+        // Peer Init with custom config
         async function initPeer(customId) {
             const id = customId || getStoredId();
-            if (peer) peer.destroy();
+            if (peer) {
+                peer.destroy();
+                peer = null;
+            }
             disconnectAll();
+            
             peer = new Peer(id, {
                 host: '0.peerjs.com',
                 port: 443,
                 secure: true,
-                debug: 0
+                debug: 2, // ডিবাগ অন (কনসোলে দেখবেন)
+                config: PEER_CONFIG.config
             });
+
             peer.on('open', () => {
                 setAndSaveId(id);
                 myIdInput.value = id;
-                setStatus('idle', 'প্রস্তুত');
+                setStatus('idle', 'প্রস্তুত (STUN/TURN সক্রিয়)');
+                console.log('✅ PeerJS Open with STUN/TURN');
             });
+
             peer.on('error', err => {
-                console.error(err);
+                console.error('❌ PeerJS Error:', err);
                 if (err.type === 'unavailable-id') {
                     alert('এই আইডি আগেই নেওয়া, ভিন্ন আইডি দিন');
                 }
                 setStatus('idle', 'আইডি ত্রুটি');
             });
+
             peer.on('call', handleIncomingCall);
+            
+            // সংযোগ স্থাপনের পর
+            peer.on('connection', (conn) => {
+                console.log('🔗 Connection established:', conn.peer);
+            });
         }
 
-        // Media
         async function getMedia() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }, 
+                    video: false 
+                });
                 setMicMute(true);
+                console.log('🎤 Microphone acquired');
             } catch (e) {
                 alert('মাইক্রোফোন অনুমতি ব্যর্থ: ' + e.message);
             }
@@ -512,7 +552,6 @@
             else document.exitFullscreen();
         });
 
-        // Add global click listener to resume all audio (solves autoplay)
         document.addEventListener('click', resumeAllAudio, { once: false });
 
         window.addEventListener('beforeunload', () => {
@@ -529,4 +568,4 @@
     })();
 </script>
 </body>
-</html>
+    </html>
